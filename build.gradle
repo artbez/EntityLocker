@@ -1,5 +1,6 @@
 buildscript {
     ext.kotlin_version = '1.2.30'
+    ext.kotlin_coroutine_version = '0.22.5'
 
     repositories {
         mavenCentral()
@@ -24,6 +25,8 @@ repositories {
 dependencies {
     compile "org.openjdk.jcstress:jcstress-core:0.4"
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    compile "org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:$kotlin_coroutine_version"
+    testCompile 'junit:junit:4.12'
 }
 
 compileKotlin {
@@ -35,4 +38,10 @@ compileTestKotlin {
 
 jcstress {
     jcstressDependency 'org.openjdk.jcstress:jcstress-core:0.4'
+}
+
+kotlin {
+    experimental {
+        coroutines "enable"
+    }
 }

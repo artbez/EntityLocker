@@ -16,7 +16,7 @@ import static org.openjdk.jcstress.annotations.Expect.FORBIDDEN;
 @Outcome(id = "1, 2", expect = ACCEPTABLE, desc = "consequence increment")
 @Outcome(id = "2, 1", expect = ACCEPTABLE, desc = "consequence increment")
 @Outcome(expect = FORBIDDEN, desc = "data race")
-public class ModifyTest {
+public class ModifySameTest {
 
     @Actor
     public void actor1(EntityState.SimpleEntity state, II_Result result) {

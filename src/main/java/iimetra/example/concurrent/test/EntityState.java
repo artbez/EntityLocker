@@ -3,7 +3,7 @@ package iimetra.example.concurrent.test;
 
 import org.openjdk.jcstress.annotations.State;
 
-public class EntityState {
+class EntityState {
 
     @State
     public static class SimpleEntity {
