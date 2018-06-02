@@ -1,33 +1,80 @@
 package iimetra.example.concurrent.lock
 
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.locks.ReentrantLock
+import java.util.concurrent.TimeUnit
 
-class EntityLocker {
+interface EntityLockerInterface {
+    fun lock(entityId: Any)
+    fun unlock(entityId: Any)
+}
+
+class EntityLocker private constructor(
+    private val lockMap: ConcurrentHashMap<Any, LockWrapper>,
+    private val removeStrategyList: List<RemoveStrategy>
+) : EntityLockerInterface {
+
+    override fun lock(entityId: Any) {
+        processStopCondition(entityId)
+
+        var successLock = false
+        while (!successLock) {
+            val lockWrapper = lockMap.computeIfAbsent(entityId) { LockWrapper() }
+            successLock = lockWrapper.lock()
+        }
+    }
+
+    override fun unlock(entityId: Any) {
+        val entityLock = lockMap[entityId] ?: throw IllegalStateException("Can't unlock without monitor")
+        entityLock.unlock()
+    }
+
+    inline fun lock(entityId: Any, protectedCode: () -> Unit) {
+        lock(entityId)
+        try {
+            protectedCode()
+        } finally {
+            unlock(entityId)
+        }
+    }
+
+    private fun processStopCondition(entityId: Any) {
+        removeStrategyList
+            // for lazy filtering
+            .stream()
+            .filter { it.checkStopCondition(entityId) }
+            .forEach {
+                it.processStrategy(entityId)
+            }
+    }
 
     companion object {
 
-        private val lockMap = ConcurrentHashMap<Any, ReentrantLock>()
-
-        fun lock(entityId: Any) {
-            lockMap.computeIfAbsent(entityId) {
-                ReentrantLock()
-            }.lock()
+        fun create(): EntityLocker {
+            val lockBuilder = EntityLockBuilder()
+            return EntityLocker(lockBuilder.lockMap, lockBuilder.removeStrategyList)
         }
 
-        fun unlock(entityId: Any) {
-            lockMap.computeIfAbsent(entityId) {
-                ReentrantLock()
-            }.unlock()
+        fun create(builder: EntityLockBuilder.() -> Unit): EntityLocker {
+            val lockBuilder = EntityLockBuilder()
+            lockBuilder.builder()
+            return EntityLocker(lockBuilder.lockMap, lockBuilder.removeStrategyList)
         }
     }
 }
 
-inline fun lock(entityId: Any, protectedCode: () -> Unit) {
-    EntityLocker.lock(entityId)
-    try {
-        protectedCode()
-    } finally {
-        EntityLocker.unlock(entityId)
+class EntityLockBuilder {
+    val lockMap = ConcurrentHashMap<Any, LockWrapper>()
+
+    var removeStrategyList = mutableListOf<RemoveStrategy>()
+        private set
+
+    fun withByTimeRemove(duration: Long, timeUnit: TimeUnit) {
+        val removeStrategy = RemoveByTimeStrategy(timeUnit.toMillis(duration), lockMap)
+        removeStrategyList.add(removeStrategy)
+    }
+
+    fun withBySizeRemove(maxSize: Int) {
+        val removeStrategy = RemoveBySizeStrategy(maxSize, lockMap)
+        removeStrategyList.add(removeStrategy)
     }
 }

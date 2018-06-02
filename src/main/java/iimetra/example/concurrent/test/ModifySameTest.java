@@ -18,25 +18,27 @@ import static org.openjdk.jcstress.annotations.Expect.FORBIDDEN;
 @Outcome(expect = FORBIDDEN, desc = "data race")
 public class ModifySameTest {
 
+    private final EntityLocker locker = EntityLocker.Companion.create();
+
     @Actor
     public void actor1(EntityState.SimpleEntity state, II_Result result) {
-        EntityLocker.Companion.lock(state.getId());
+        locker.lock(state.getId());
         try {
             state.inc();
             result.r1 = state.getCount();
         } finally {
-            EntityLocker.Companion.unlock(state.getId());
+            locker.unlock(state.getId());
         }
     }
 
     @Actor
     public void actor2(EntityState.SimpleEntity state, II_Result result) {
-        EntityLocker.Companion.lock(state.getId());
+        locker.lock(state.getId());
         try {
             state.inc();
             result.r2 = state.getCount();
         } finally {
-            EntityLocker.Companion.unlock(state.getId());
+            locker.unlock(state.getId());
         }
     }
 }
