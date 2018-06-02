@@ -1,26 +1,13 @@
-package iimetra.example.concurrent.lock
+package iimetra.example.concurrent.lock.strategy
 
-import kotlinx.coroutines.experimental.delay
-import kotlinx.coroutines.experimental.launch
+import iimetra.example.concurrent.lock.wrapper.LockWrapper
 import java.util.concurrent.ConcurrentHashMap
-
-sealed class RemoveStrategyExecutor(@Volatile var repeatPeriod: Long) {
-
-    fun start() = launch {
-        while (true) {
-            delay(repeatPeriod)
-            process()
-        }
-    }
-
-    protected abstract fun process()
-}
 
 class RemoveByTimeExecutor(
     repeatPeriod: Long,
     private val liveTime: Long,
     private val lockMap: ConcurrentHashMap<Any, LockWrapper>
-) : RemoveStrategyExecutor(repeatPeriod) {
+) : StrategyExecutor(repeatPeriod) {
 
     override fun process() {
         // stream for lazy filter
@@ -44,7 +31,7 @@ class RemoveBySizeExecutor(
     repeatPeriod: Long,
     private val maxSize: Int,
     private val lockMap: ConcurrentHashMap<Any, LockWrapper>
-) : RemoveStrategyExecutor(repeatPeriod) {
+) : StrategyExecutor(repeatPeriod) {
 
     override fun process() {
         if (lockMap.size > maxSize) {

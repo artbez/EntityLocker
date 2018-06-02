@@ -1,5 +1,7 @@
 package iimetra.example.concurrent.lock
 
+import iimetra.example.concurrent.lock.strategy.StrategyExecutor
+import iimetra.example.concurrent.lock.wrapper.LockWrapper
 import java.util.concurrent.ConcurrentHashMap
 
 interface EntityLocker {
@@ -19,11 +21,11 @@ inline fun EntityLocker.lock(entityId: Any, protectedCode: () -> Unit) {
 
 class DefaultEntityLocker(
     private val lockMap: ConcurrentHashMap<Any, LockWrapper>,
-    removeStrategyExecutorList: List<RemoveStrategyExecutor>
+    strategyExecutorList: List<StrategyExecutor>
 ) : EntityLocker {
 
     init {
-        removeStrategyExecutorList.forEach {
+        strategyExecutorList.forEach {
             it.start()
         }
     }
