@@ -19,6 +19,19 @@ class LockWrapper {
         return successVisit
     }
 
+    fun tryLock(): Boolean {
+        val lastVisitorsNumber = visitorsAndIsDeleted.reference
+        val successVisit = visitorsAndIsDeleted.compareAndSet(lastVisitorsNumber, lastVisitorsNumber + 1, false, false)
+        if (successVisit) {
+            val locked = innerLock.tryLock()
+            if (locked) {
+                lockStatistic.visit()
+                return true
+            }
+        }
+        return successVisit
+    }
+
     fun unlock() {
         innerLock.unlock()
 

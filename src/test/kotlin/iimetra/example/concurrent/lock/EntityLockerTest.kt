@@ -15,7 +15,7 @@ private class TestEntity(val id: Long, var value: String = "initial")
 
 class EntityLockerTest {
 
-    private val locker: EntityLocker = EntityLocker.create(TimeUnit.SECONDS.toMillis(1)) {
+    private val locker: EntityLocker = EntityLockerFactory.create(TimeUnit.SECONDS.toMillis(1)) {
         withByTimeRemove(1, TimeUnit.SECONDS)
         withBySizeRemove(100)
     }
@@ -81,9 +81,7 @@ class EntityLockerTest {
                     locker.lock(i) {}
                 }
             }
-            val lockMapField = locker.javaClass.getDeclaredField("lockMap")
-            lockMapField.isAccessible = true
-            val lockMap = lockMapField.get(locker) as ConcurrentHashMap<*, *>
+            val lockMap = getLockerMap()
 
             delay(5000)
             Assert.assertTrue("Elements of hashmap should removed", lockMap.size == 0)
@@ -98,12 +96,23 @@ class EntityLockerTest {
                     locker.lock(i) {}
                 }
             }
-            val lockMapField = locker.javaClass.getDeclaredField("lockMap")
-            lockMapField.isAccessible = true
-            val lockMap = lockMapField.get(locker) as ConcurrentHashMap<*, *>
+
+            val lockMap = getLockerMap()
 
             delay(5000L)
             Assert.assertTrue("Elements of hashmap should removed", lockMap.size <= 100)
         }
+    }
+
+    private fun getLockerMap(): ConcurrentHashMap<*, *> {
+        val lockerField = locker.javaClass.getDeclaredField("locker")
+        lockerField.isAccessible = true
+        val entryLocker = lockerField.get(locker)
+
+        val lockMapField = entryLocker.javaClass.getDeclaredField("lockMap")
+        lockMapField.isAccessible = true
+        val lockMap = lockMapField.get(entryLocker) as ConcurrentHashMap<*, *>
+
+        return lockMap
     }
 }
