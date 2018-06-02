@@ -1,9 +1,6 @@
 package iimetra.example.concurrent.lock
 
-import kotlinx.coroutines.experimental.delay
-import kotlinx.coroutines.experimental.launch
-import kotlinx.coroutines.experimental.runBlocking
-import kotlinx.coroutines.experimental.withTimeout
+import kotlinx.coroutines.experimental.*
 import org.junit.Assert
 import org.junit.Test
 import java.util.concurrent.ConcurrentHashMap
@@ -28,7 +25,7 @@ class EntityLockerTest {
         runBlocking {
             val countDownLatch = CountDownLatch(2)
 
-            val workEntity1 = launch {
+            val workEntity1 = launch(newSingleThreadContext("ex1")) {
                 locker.lock(entity1.id) {
                     countDownLatch.countDown()
                     countDownLatch.await()
@@ -36,7 +33,7 @@ class EntityLockerTest {
                 }
             }
 
-            val workEntity2 = launch {
+            val workEntity2 = launch(newSingleThreadContext("ex2")) {
                 locker.lock(entity2.id) {
                     countDownLatch.countDown()
                     countDownLatch.await()
@@ -111,8 +108,7 @@ class EntityLockerTest {
 
         val lockMapField = entryLocker.javaClass.getDeclaredField("lockMap")
         lockMapField.isAccessible = true
-        val lockMap = lockMapField.get(entryLocker) as ConcurrentHashMap<*, *>
 
-        return lockMap
+        return lockMapField.get(entryLocker) as ConcurrentHashMap<*, *>
     }
 }

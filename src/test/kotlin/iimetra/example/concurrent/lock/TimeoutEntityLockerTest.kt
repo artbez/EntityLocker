@@ -2,6 +2,7 @@ package iimetra.example.concurrent.lock
 
 import kotlinx.coroutines.experimental.delay
 import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.experimental.newSingleThreadContext
 import kotlinx.coroutines.experimental.runBlocking
 import org.junit.Assert
 import org.junit.Test
@@ -14,7 +15,7 @@ class TimeoutEntityLockerTest {
     fun timeoutTestNotSuccess() {
         val entity1 = TestEntity(1)
         runBlocking {
-            launch {
+            launch(newSingleThreadContext("ex1")) {
                 locker.lock(entity1.id) {
                     delay(5000L)
                 }
@@ -31,7 +32,7 @@ class TimeoutEntityLockerTest {
     fun timeoutTestSuccess() {
         val entity1 = TestEntity(1)
         runBlocking {
-            launch {
+            launch(newSingleThreadContext("ex1")) {
                 locker.lock(entity1.id) {
                     delay(3000)
                 }
