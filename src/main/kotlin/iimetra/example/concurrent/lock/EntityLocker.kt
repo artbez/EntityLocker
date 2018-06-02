@@ -10,12 +10,16 @@ interface EntityLockerInterface {
 
 class EntityLocker private constructor(
     private val lockMap: ConcurrentHashMap<Any, LockWrapper>,
-    private val removeStrategyList: List<RemoveStrategy>
+    removeStrategyExecutorList: List<RemoveStrategyExecutor>
 ) : EntityLockerInterface {
 
-    override fun lock(entityId: Any) {
-        processStopCondition(entityId)
+    init {
+        removeStrategyExecutorList.forEach {
+            it.start()
+        }
+    }
 
+    override fun lock(entityId: Any) {
         var successLock = false
         while (!successLock) {
             val lockWrapper = lockMap.computeIfAbsent(entityId) { LockWrapper() }
@@ -37,44 +41,40 @@ class EntityLocker private constructor(
         }
     }
 
-    private fun processStopCondition(entityId: Any) {
-        removeStrategyList
-            // for lazy filtering
-            .stream()
-            .filter { it.checkStopCondition(entityId) }
-            .forEach {
-                it.processStrategy(entityId)
-            }
-    }
-
     companion object {
 
-        fun create(): EntityLocker {
-            val lockBuilder = EntityLockBuilder()
-            return EntityLocker(lockBuilder.lockMap, lockBuilder.removeStrategyList)
-        }
+        fun create(): EntityLocker = create {}
+
+        fun create(repeatPeriod: Long): EntityLocker = create(repeatPeriod) {}
 
         fun create(builder: EntityLockBuilder.() -> Unit): EntityLocker {
             val lockBuilder = EntityLockBuilder()
             lockBuilder.builder()
             return EntityLocker(lockBuilder.lockMap, lockBuilder.removeStrategyList)
         }
+
+        // Not use default param values in order to java call possibility
+        fun create(repeatPeriod: Long, builder: EntityLockBuilder.() -> Unit): EntityLocker {
+            val lockBuilder = EntityLockBuilder(repeatPeriod)
+            lockBuilder.builder()
+            return EntityLocker(lockBuilder.lockMap, lockBuilder.removeStrategyList)
+        }
     }
 }
 
-class EntityLockBuilder {
+class EntityLockBuilder(private val repeatPeriod: Long = TimeUnit.MINUTES.toMillis(5)) {
     val lockMap = ConcurrentHashMap<Any, LockWrapper>()
 
-    var removeStrategyList = mutableListOf<RemoveStrategy>()
+    var removeStrategyList = mutableListOf<RemoveStrategyExecutor>()
         private set
 
     fun withByTimeRemove(duration: Long, timeUnit: TimeUnit) {
-        val removeStrategy = RemoveByTimeStrategy(timeUnit.toMillis(duration), lockMap)
+        val removeStrategy = RemoveByTimeExecutor(repeatPeriod, timeUnit.toMillis(duration), lockMap)
         removeStrategyList.add(removeStrategy)
     }
 
     fun withBySizeRemove(maxSize: Int) {
-        val removeStrategy = RemoveBySizeStrategy(maxSize, lockMap)
+        val removeStrategy = RemoveBySizeExecutor(repeatPeriod, maxSize, lockMap)
         removeStrategyList.add(removeStrategy)
     }
 }
