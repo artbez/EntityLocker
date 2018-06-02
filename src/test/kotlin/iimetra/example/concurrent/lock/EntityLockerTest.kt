@@ -11,7 +11,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 
-private class TestEntity(val id: Long, var value: String = "initial")
+class TestEntity(val id: Long, var value: String = "initial")
 
 class EntityLockerTest {
 

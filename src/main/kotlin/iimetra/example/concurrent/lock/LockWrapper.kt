@@ -26,8 +26,8 @@ class LockWrapper {
             val locked = innerLock.tryLock()
             if (locked) {
                 lockStatistic.visit()
-                return true
             }
+            return locked
         }
         return successVisit
     }

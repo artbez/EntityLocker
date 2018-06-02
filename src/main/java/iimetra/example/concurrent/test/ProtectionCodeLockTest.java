@@ -22,24 +22,24 @@ public class ProtectionCodeLockTest {
     private final EntityLocker locker = EntityLockerFactory.Companion.create();
 
     @Actor
-    public void actor1(EntityState.SimpleEntity state, II_Result result) {
-        locker.lock(state.getId());
+    public void actor1(EntityState.SimpleState state, II_Result result) {
+        locker.lock(state.getEntity().getId());
         try {
-            state.inc();
-            result.r1 = state.getCount();
+            state.getEntity().inc();
+            result.r1 = state.getEntity().getCount();
         } finally {
-            locker.unlock(state.getId());
+            locker.unlock(state.getEntity().getId());
         }
     }
 
     @Actor
-    public void actor2(EntityState.SimpleEntity state, II_Result result) {
-        locker.lock(state.getId());
+    public void actor2(EntityState.SimpleState state, II_Result result) {
+        locker.lock(state.getEntity().getId());
         try {
-            state.inc();
-            result.r2 = state.getCount();
+            state.getEntity().inc();
+            result.r2 = state.getEntity().getCount();
         } finally {
-            locker.unlock(state.getId());
+            locker.unlock(state.getEntity().getId());
         }
     }
 }
