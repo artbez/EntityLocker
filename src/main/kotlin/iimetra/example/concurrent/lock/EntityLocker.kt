@@ -28,7 +28,7 @@ class EntityLocker private constructor(
     }
 
     override fun unlock(entityId: Any) {
-        val entityLock = lockMap[entityId] ?: throw IllegalStateException("Can't unlock without monitor")
+        val entityLock = lockMap[entityId] ?: throw IllegalStateException("Entity id is not locked")
         entityLock.unlock()
     }
 

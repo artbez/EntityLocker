@@ -20,12 +20,13 @@ class LockWrapper {
     }
 
     fun unlock() {
+        innerLock.unlock()
+
         var successExit = false
         while (!successExit) {
             val lastVisitorsNumber = visitorsAndIsDeleted.reference
             successExit = visitorsAndIsDeleted.compareAndSet(lastVisitorsNumber, lastVisitorsNumber - 1, false, false)
         }
-        innerLock.unlock()
     }
 
     // If we cannot remove, element is used by another thread and this means we should not remove it
