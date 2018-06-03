@@ -16,9 +16,6 @@ class EntityLockerFactory {
 
     companion object {
 
-        fun create(): TimeoutEntityLocker = create {}
-
-        // for java
         fun createFull(): TimeoutEntityLocker = create {
             withDeadlockPrevention()
             withBySizeRemove(1000)
@@ -32,8 +29,7 @@ class EntityLockerFactory {
             lockBuilder.builder()
             val initialLocker = DefaultEntityLocker(lockBuilder.lockMap, lockBuilder.strategyList.map { it() })
             val globalLocker = GlobalSupportEntityLockerDecorator(initialLocker)
-            val timeoutLocker = TimeoutEntityLockerDecorator(globalLocker)
-            return timeoutLocker
+            return TimeoutEntityLockerDecorator(globalLocker)
         }
     }
 }
