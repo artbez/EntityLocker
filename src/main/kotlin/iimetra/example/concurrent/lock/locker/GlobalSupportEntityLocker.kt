@@ -1,9 +1,9 @@
 package iimetra.example.concurrent.lock.locker
 
-import kotlinx.coroutines.experimental.delay
-import kotlinx.coroutines.experimental.runBlocking
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.locks.Lock
+import java.util.concurrent.locks.ReentrantLock
+
 
 interface GlobalSupportEntityLocker : EntityLocker {
     fun lock()
@@ -21,54 +21,87 @@ inline fun GlobalSupportEntityLocker.globalLock(protectedCode: () -> Unit) {
 }
 
 class GlobalSupportEntityLockerDecorator(private val locker: EntityLocker) : EntityLocker by (locker), GlobalSupportEntityLocker {
-    private val global = AtomicBoolean(false)
-    private val lockCondition = java.lang.Object()
-    private val lockerVisitors = AtomicLong(0)
+
+    private val globalLock: Lock = ReentrantLock()
+    private val glLockNotProcessingCond = globalLock.newCondition()
+    private val unlockLocalCond = globalLock.newCondition()
+    private val localLocksProcessingNumber = AtomicInteger(0)
+    private var globalLockProcessing = false
 
     override fun lock() {
-        var success = global.compareAndSet(false, true)
-        while (!success) {
-            lockCondition.wait()
-            success = global.compareAndSet(false, true)
-        }
-        runBlocking {
-            while (lockerVisitors.get() != 0L) {
-                delay(100)
+        globalLockBlock {
+
+            while (globalLockProcessing) {
+                glLockNotProcessingCond.await()
+            }
+
+            globalLockProcessing = true
+
+
+            while (localLocksProcessingNumber.get() != 0) {
+                unlockLocalCond.await()
             }
         }
     }
 
     override fun unlock() {
-        global.set(false)
-        lockCondition.notifyAll()
+        globalLockBlock {
+            globalLockProcessing = false
+            glLockNotProcessingCond.signalAll()
+        }
     }
 
     override fun tryLock(): Boolean {
-        if (global.compareAndSet(false, true)) {
-            if (lockerVisitors.get() == 0L) {
-                return true
+        globalLockBlock {
+            if (!globalLockProcessing) {
+                globalLockProcessing = true
+                if (localLocksProcessingNumber.get() == 0) {
+                    return true
+                }
+                globalLockProcessing = false
+                glLockNotProcessingCond.signalAll()
             }
-            global.compareAndSet(true, false)
         }
         return false
     }
 
     override fun lock(entityId: Any) {
-        if (!global.get()) {
-            lockerVisitors.incrementAndGet()
-            locker.lock(entityId)
+        globalLockBlock {
+            while (globalLockProcessing) {
+                glLockNotProcessingCond.await()
+            }
+            localLocksProcessingNumber.incrementAndGet()
         }
+        locker.lock(entityId)
     }
 
     override fun tryLock(entityId: Any): Boolean {
-        if (!global.get()) {
-            return locker.tryLock(entityId)
+        globalLockBlock {
+            if (!globalLockProcessing) {
+                localLocksProcessingNumber.incrementAndGet()
+                if (locker.tryLock(entityId)) {
+                    return true
+                }
+                localLocksProcessingNumber.decrementAndGet()
+            }
         }
         return false
     }
 
     override fun unlock(entityId: Any) {
-        locker.unlock(entityId)
-        lockerVisitors.decrementAndGet()
+        globalLockBlock {
+            locker.unlock(entityId)
+            localLocksProcessingNumber.decrementAndGet()
+            unlockLocalCond.signalAll()
+        }
+    }
+
+    private inline fun globalLockBlock(block: () -> Unit) {
+        globalLock.lock()
+        try {
+            block()
+        } finally {
+            globalLock.unlock()
+        }
     }
 }
