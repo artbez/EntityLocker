@@ -3,7 +3,7 @@ package iimetra.example.concurrent.lock.wrapper
 import java.util.concurrent.atomic.AtomicStampedReference
 
 class LockStatistic {
-    private val requestedThreadsAndVersion = AtomicStampedReference<List<Thread>>(ArrayList(), 0)
+    private val requestedThreadsAndVersion = AtomicStampedReference<Set<Thread>>(HashSet(), 0)
 
     var ownerThread: Thread? = null
         private set
@@ -29,17 +29,17 @@ class LockStatistic {
         update { it.plus(Thread.currentThread()) }
     }
 
-    fun threadsAndVersion(): Pair<List<Thread>, Int> {
+    fun threadsAndVersion(): Pair<Set<Thread>, Int> {
         while (true) {
-            val requestedList = requestedThreadsAndVersion.reference
+            val requestedSet = requestedThreadsAndVersion.reference
             val lastVersion = requestedThreadsAndVersion.stamp
-            if (requestedThreadsAndVersion.compareAndSet(requestedList, requestedList, lastVersion, lastVersion)) {
-                return requestedList to lastVersion
+            if (requestedThreadsAndVersion.compareAndSet(requestedSet, requestedSet, lastVersion, lastVersion)) {
+                return requestedSet to lastVersion
             }
         }
     }
 
-    private fun update(listUpdate: (List<Thread>) -> List<Thread>) {
+    private fun update(listUpdate: (Set<Thread>) -> Set<Thread>) {
         while (true) {
             val requestedList = requestedThreadsAndVersion.reference
             val lastVersion = requestedThreadsAndVersion.stamp

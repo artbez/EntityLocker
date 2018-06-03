@@ -1,5 +1,7 @@
 package iimetra.example.concurrent.lock
 
+import iimetra.example.concurrent.lock.locker.EntityLocker
+import iimetra.example.concurrent.lock.locker.lock
 import kotlinx.coroutines.experimental.*
 import org.junit.Assert
 import org.junit.Test
@@ -104,9 +106,13 @@ class EntityLockerTest {
     }
 
     private fun getLockerMap(): ConcurrentHashMap<*, *> {
-        val lockerField = locker.javaClass.getDeclaredField("locker")
+        val globalLockerField = locker.javaClass.getDeclaredField("locker")
+        globalLockerField.isAccessible = true
+        val globalLocker = globalLockerField.get(locker)
+
+        val lockerField = globalLocker.javaClass.getDeclaredField("locker")
         lockerField.isAccessible = true
-        val entryLocker = lockerField.get(locker)
+        val entryLocker = lockerField.get(globalLocker)
 
         val lockMapField = entryLocker.javaClass.getDeclaredField("lockMap")
         lockMapField.isAccessible = true

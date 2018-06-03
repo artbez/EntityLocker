@@ -1,8 +1,8 @@
 package iimetra.example.concurrent.test;
 
 
-import iimetra.example.concurrent.lock.EntityLocker;
 import iimetra.example.concurrent.lock.EntityLockerFactory;
+import iimetra.example.concurrent.lock.locker.EntityLocker;
 import org.openjdk.jcstress.annotations.Actor;
 import org.openjdk.jcstress.annotations.Description;
 import org.openjdk.jcstress.annotations.JCStressTest;

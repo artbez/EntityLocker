@@ -1,5 +1,7 @@
 package iimetra.example.concurrent.lock
 
+import iimetra.example.concurrent.lock.locker.EntityLocker
+import iimetra.example.concurrent.lock.locker.lock
 import kotlinx.coroutines.experimental.async
 import kotlinx.coroutines.experimental.delay
 import kotlinx.coroutines.experimental.newSingleThreadContext

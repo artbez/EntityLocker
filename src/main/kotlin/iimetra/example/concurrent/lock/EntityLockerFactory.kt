@@ -1,5 +1,9 @@
 package iimetra.example.concurrent.lock
 
+import iimetra.example.concurrent.lock.locker.DefaultEntityLocker
+import iimetra.example.concurrent.lock.locker.GlobalSupportEntityLockerDecorator
+import iimetra.example.concurrent.lock.locker.TimeoutEntityLocker
+import iimetra.example.concurrent.lock.locker.TimeoutEntityLockerDecorator
 import iimetra.example.concurrent.lock.strategy.DeadLockStrategyExecutor
 import iimetra.example.concurrent.lock.strategy.RemoveBySizeExecutor
 import iimetra.example.concurrent.lock.strategy.RemoveByTimeExecutor
@@ -26,7 +30,10 @@ class EntityLockerFactory {
         fun create(builder: EntityLockBuilder.() -> Unit): TimeoutEntityLocker {
             val lockBuilder = EntityLockBuilder()
             lockBuilder.builder()
-            return TimeoutEntityLockerDecorator(DefaultEntityLocker(lockBuilder.lockMap, lockBuilder.strategyList.map { it() }))
+            val initialLocker = DefaultEntityLocker(lockBuilder.lockMap, lockBuilder.strategyList.map { it() })
+            val globalLocker = GlobalSupportEntityLockerDecorator(initialLocker)
+            val timeoutLocker = TimeoutEntityLockerDecorator(globalLocker)
+            return timeoutLocker
         }
     }
 }
