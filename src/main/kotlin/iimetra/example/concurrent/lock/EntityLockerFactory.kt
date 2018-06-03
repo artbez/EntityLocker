@@ -14,41 +14,40 @@ class EntityLockerFactory {
 
         fun create(): TimeoutEntityLocker = create {}
 
-        fun create(repeatPeriod: Long): TimeoutEntityLocker = create(repeatPeriod) {}
+        // for java
+        fun createFull(): TimeoutEntityLocker = create {
+            withDeadlockPrevention()
+            withBySizeRemove(1000)
+            withByTimeRemove(10, TimeUnit.SECONDS)
+            withDeadlockPrevention()
+            repeatPeriod = TimeUnit.SECONDS.toMillis(1)
+        }
 
         fun create(builder: EntityLockBuilder.() -> Unit): TimeoutEntityLocker {
             val lockBuilder = EntityLockBuilder()
             lockBuilder.builder()
-            return TimeoutEntityLockerDecorator(DefaultEntityLocker(lockBuilder.lockMap, lockBuilder.strategyList))
-        }
-
-        // Not use default param values in order to java call possibility
-        fun create(repeatPeriod: Long, builder: EntityLockBuilder.() -> Unit): TimeoutEntityLocker {
-            val lockBuilder = EntityLockBuilder(repeatPeriod)
-            lockBuilder.builder()
-            return TimeoutEntityLockerDecorator(DefaultEntityLocker(lockBuilder.lockMap, lockBuilder.strategyList))
+            return TimeoutEntityLockerDecorator(DefaultEntityLocker(lockBuilder.lockMap, lockBuilder.strategyList.map { it() }))
         }
     }
 }
 
-class EntityLockBuilder(private val repeatPeriod: Long = TimeUnit.MINUTES.toMillis(5)) {
+class EntityLockBuilder {
     val lockMap = ConcurrentHashMap<Any, LockWrapper>()
 
-    var strategyList = mutableListOf<StrategyExecutor>()
+    var strategyList = mutableListOf<() -> StrategyExecutor>()
         private set
 
+    var repeatPeriod: Long = TimeUnit.MINUTES.toMillis(5)
+
     fun withByTimeRemove(duration: Long, timeUnit: TimeUnit) {
-        val removeStrategy = RemoveByTimeExecutor(repeatPeriod, timeUnit.toMillis(duration), lockMap)
-        strategyList.add(removeStrategy)
+        strategyList.add { RemoveByTimeExecutor(repeatPeriod, timeUnit.toMillis(duration), lockMap) }
     }
 
     fun withBySizeRemove(maxSize: Int) {
-        val removeStrategy = RemoveBySizeExecutor(repeatPeriod, maxSize, lockMap)
-        strategyList.add(removeStrategy)
+        strategyList.add { RemoveBySizeExecutor(repeatPeriod, maxSize, lockMap) }
     }
 
     fun withDeadlockPrevention() {
-        val deadLockStrategy = DeadLockStrategyExecutor(repeatPeriod, lockMap)
-        strategyList.add(deadLockStrategy)
+        strategyList.add { DeadLockStrategyExecutor(repeatPeriod, lockMap) }
     }
 }

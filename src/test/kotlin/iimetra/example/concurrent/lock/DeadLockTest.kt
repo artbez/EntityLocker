@@ -11,10 +11,11 @@ import java.util.concurrent.TimeUnit
 
 class DeadLockTest {
 
-    private val locker: EntityLocker = EntityLockerFactory.create(TimeUnit.SECONDS.toMillis(1)) {
+    private val locker: EntityLocker = EntityLockerFactory.create {
         withByTimeRemove(1, TimeUnit.SECONDS)
         withBySizeRemove(100)
         withDeadlockPrevention()
+        repeatPeriod = TimeUnit.SECONDS.toMillis(1)
     }
 
     @Test(expected = InterruptedException::class)

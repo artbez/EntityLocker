@@ -9,7 +9,10 @@ import org.junit.Test
 import java.util.concurrent.TimeUnit
 
 class TimeoutEntityLockerTest {
-    private val locker: TimeoutEntityLocker = EntityLockerFactory.create(TimeUnit.SECONDS.toMillis(1))
+    private val locker: TimeoutEntityLocker = EntityLockerFactory.create {
+        repeatPeriod = TimeUnit.SECONDS.toMillis(1)
+        withDeadlockPrevention()
+    }
 
     @Test
     fun timeoutTestNotSuccess() {

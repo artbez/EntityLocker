@@ -27,7 +27,6 @@ class LockWrapper {
         val lastVisitorsNumber = visitorsAndIsDeleted.reference
         val successVisit = visitorsAndIsDeleted.compareAndSet(lastVisitorsNumber, lastVisitorsNumber + 1, false, false)
         if (successVisit) {
-            lockStatistic.request()
             val locked = innerLock.tryLock()
             if (locked) {
                 lockStatistic.visit()

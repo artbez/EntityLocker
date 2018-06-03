@@ -20,11 +20,11 @@ import static org.openjdk.jcstress.annotations.Expect.FORBIDDEN;
 @Outcome(expect = FORBIDDEN, desc = "data race or too long incrementing")
 public class ProtectionCodeTimeoutLockTest {
 
-    private final TimeoutEntityLocker locker = EntityLockerFactory.Companion.create();
+    private final TimeoutEntityLocker locker = EntityLockerFactory.Companion.createFull();
 
     @Actor
     public void actor1(EntityState.SimpleState state, II_Result result) {
-        Boolean success = locker.lock(3, TimeUnit.SECONDS, state.getEntity().getId());
+        Boolean success = locker.lock(10, TimeUnit.SECONDS, state.getEntity().getId());
         if (success) {
             try {
                 state.getEntity().inc();
@@ -37,7 +37,7 @@ public class ProtectionCodeTimeoutLockTest {
 
     @Actor
     public void actor2(EntityState.SimpleState state, II_Result result) {
-        Boolean success = locker.lock(3, TimeUnit.SECONDS, state.getEntity().getId());
+        Boolean success = locker.lock(10, TimeUnit.SECONDS, state.getEntity().getId());
         if (success) {
             try {
                 state.getEntity().inc();

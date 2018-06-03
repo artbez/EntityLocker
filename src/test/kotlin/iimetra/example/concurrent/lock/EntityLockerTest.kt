@@ -12,7 +12,8 @@ class TestEntity(val id: Long, var value: String = "initial")
 
 class EntityLockerTest {
 
-    private val locker: EntityLocker = EntityLockerFactory.create(TimeUnit.SECONDS.toMillis(1)) {
+    private val locker: EntityLocker = EntityLockerFactory.create {
+        repeatPeriod = TimeUnit.SECONDS.toMillis(1)
         withByTimeRemove(1, TimeUnit.SECONDS)
         withBySizeRemove(100)
         withDeadlockPrevention()

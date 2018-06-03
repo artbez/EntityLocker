@@ -17,7 +17,7 @@ import static org.openjdk.jcstress.annotations.Expect.FORBIDDEN;
 @Outcome(expect = FORBIDDEN, desc = "data race")
 public class DataRaceDifferentIdsTest {
 
-    private final TimeoutEntityLocker locker = EntityLockerFactory.Companion.create();
+    private final TimeoutEntityLocker locker = EntityLockerFactory.Companion.createFull();
 
     @Actor
     public void actor1(EntityState.EntityPair state, II_Result result) {
