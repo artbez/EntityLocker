@@ -21,12 +21,14 @@ inline fun EntityLocker.lock(entityId: Any, protectedCode: () -> Unit) {
 
 class DefaultEntityLocker(
     private val lockMap: ConcurrentHashMap<Any, LockWrapper>,
-    strategyExecutorList: List<StrategyExecutor>
+    strategyExecutors: List<StrategyExecutor>
 ) : EntityLocker {
 
     init {
-        strategyExecutorList.forEach {
-            it.start()
+        strategyExecutors.forEach {
+            it.start {
+                lockMap.values.forEach { it.lockStatistic.ownerThread?.interrupt() }
+            }
         }
     }
 

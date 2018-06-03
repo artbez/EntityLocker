@@ -15,6 +15,7 @@ class EntityLockerTest {
     private val locker: EntityLocker = EntityLockerFactory.create(TimeUnit.SECONDS.toMillis(1)) {
         withByTimeRemove(1, TimeUnit.SECONDS)
         withBySizeRemove(100)
+        withDeadlockPrevention()
     }
 
     @Test
@@ -25,7 +26,7 @@ class EntityLockerTest {
         runBlocking {
             val countDownLatch = CountDownLatch(2)
 
-            val workEntity1 = launch(newSingleThreadContext("ex1")) {
+            val workEntity1 = async(newSingleThreadContext("ex1")) {
                 locker.lock(entity1.id) {
                     countDownLatch.countDown()
                     countDownLatch.await()
@@ -33,7 +34,7 @@ class EntityLockerTest {
                 }
             }
 
-            val workEntity2 = launch(newSingleThreadContext("ex2")) {
+            val workEntity2 = async(newSingleThreadContext("ex2")) {
                 locker.lock(entity2.id) {
                     countDownLatch.countDown()
                     countDownLatch.await()
@@ -42,8 +43,8 @@ class EntityLockerTest {
             }
 
             withTimeout(3000L) {
-                workEntity1.join()
-                workEntity2.join()
+                workEntity1.await()
+                workEntity2.await()
             }
         }
 
