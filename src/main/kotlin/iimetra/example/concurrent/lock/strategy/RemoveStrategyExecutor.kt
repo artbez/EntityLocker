@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentHashMap
 /**
  * For Removing elements from [DefaultEntityLocker]
  *
- * Removes element if its last request time plus [liveTime] is lower than nowtime
+ * Deletes an item if it has not been accessed by [liveTime]
  */
 class RemoveByTimeExecutor(
     repeatPeriod: Long,

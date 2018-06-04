@@ -12,7 +12,7 @@ interface GlobalSupportEntityLocker : EntityLocker {
 
     /**
      * Opens global protected section.
-     * Protected code that executes under a global lock must not execute concurrently with any other protected code.
+     * Secure code that runs under global locking should not be executed at the same time as any other protected code.
      * Waits until all entities be unlocked.
      *
      * Global locking is not reentrant.

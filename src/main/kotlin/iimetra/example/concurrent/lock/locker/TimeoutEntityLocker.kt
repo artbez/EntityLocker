@@ -4,7 +4,7 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Timeout entity locker interface.
- * Provides a method for for timeout locking by entityId.
+ * Provides a method for timeout locking by entityId.
  */
 interface TimeoutEntityLocker : GlobalSupportEntityLocker {
     fun lock(timeout: Long, timeUnit: TimeUnit, entityId: Any): Boolean
