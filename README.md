@@ -18,3 +18,9 @@ II. Allow the caller to specify timeout for locking an entity (not for global).
 III. Implement protection from deadlocks (but not taking into account possible locks outside EntityLocker).
 
 IV. Implement global lock. Protected code that executes under a global lock must not execute concurrently with any other protected code.
+
+
+### Tests
+'gradle jcstress' to jcstress tests run
+
+'geadle test' to unit tests run
