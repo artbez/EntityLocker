@@ -11,6 +11,7 @@ import org.junit.Test
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
+// EntityLocker is thread-based, not coroutine-based. So, for correct testing, we should create a thread per coroutine.
 class DeadLockTest {
 
     private val locker: EntityLocker = EntityLockerFactory.create {

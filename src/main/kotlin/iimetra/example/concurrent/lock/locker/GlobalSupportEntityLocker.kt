@@ -4,13 +4,41 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.Lock
 import java.util.concurrent.locks.ReentrantLock
 
-
+/**
+ * Global entity locker interface.
+ * Provides methods for global locking.
+ */
 interface GlobalSupportEntityLocker : EntityLocker {
+
+    /**
+     * Opens global protected section.
+     * Protected code that executes under a global lock must not execute concurrently with any other protected code.
+     * Waits until all entities be unlocked.
+     *
+     * Global locking is not reentrant.
+     * Global locking can't be called from local locking section.
+     * In these cases deadlock occurs.
+     * */
     fun lock()
+
+    /** Closes global protected section. */
     fun unlock()
+
+    /** Try to open global protected section.
+     *
+     * @return <code>true</code> if success
+     *         <code>false</code> if there is a thread that executes global or any local section.
+     * */
     fun tryLock(): Boolean
 }
 
+/**
+ * For a clear selection of the locking code area.
+ *
+ * locker.globalLock {
+ *    someWork
+ * }
+ * */
 inline fun GlobalSupportEntityLocker.globalLock(protectedCode: () -> Unit) {
     lock()
     try {
@@ -23,8 +51,11 @@ inline fun GlobalSupportEntityLocker.globalLock(protectedCode: () -> Unit) {
 class GlobalSupportEntityLockerDecorator(private val locker: EntityLocker) : EntityLocker by (locker), GlobalSupportEntityLocker {
 
     private val globalLock: Lock = ReentrantLock()
+    // signals when no threads execute global locking section
     private val glLockNotProcessingCond = globalLock.newCondition()
+    // signals when local unlock called
     private val unlockLocalCond = globalLock.newCondition()
+    // number of opened but not closed local locks
     private val localLocksProcessingNumber = AtomicInteger(0)
     private var globalLockProcessing = false
 

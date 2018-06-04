@@ -12,12 +12,12 @@ import static org.openjdk.jcstress.annotations.Expect.ACCEPTABLE;
 import static org.openjdk.jcstress.annotations.Expect.FORBIDDEN;
 
 @JCStressTest
-@Description("Test concurrent modification protected code")
+@Description("Parallel working with two entities")
 @Outcome(id = "1, 1", expect = ACCEPTABLE, desc = "correct increment")
 @Outcome(expect = FORBIDDEN, desc = "data race")
 public class DataRaceDifferentIdsTest {
 
-    private final TimeoutEntityLocker locker = EntityLockerFactory.Companion.createFull();
+    private final TimeoutEntityLocker locker = EntityLockerFactory.Companion.createFullyConfigured();
 
     @Actor
     public void actor1(EntityState.EntityPair state, II_Result result) {

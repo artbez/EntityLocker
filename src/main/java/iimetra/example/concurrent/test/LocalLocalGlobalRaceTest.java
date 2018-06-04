@@ -12,7 +12,7 @@ import static org.openjdk.jcstress.annotations.Expect.ACCEPTABLE;
 import static org.openjdk.jcstress.annotations.Expect.FORBIDDEN;
 
 @JCStressTest
-@Description("Test concurrent modification protected code with global and local lock")
+@Description("Test concurrent modification protected code with 1 global and 2 local locks")
 @Outcome(id = "1, 2, 3", expect = ACCEPTABLE, desc = "consequence increment")
 @Outcome(id = "1, 3, 2", expect = ACCEPTABLE, desc = "consequence increment")
 @Outcome(id = "2, 1, 3", expect = ACCEPTABLE, desc = "consequence increment")
@@ -22,7 +22,7 @@ import static org.openjdk.jcstress.annotations.Expect.FORBIDDEN;
 @Outcome(expect = FORBIDDEN, desc = "data race")
 public class LocalLocalGlobalRaceTest {
 
-    private final GlobalSupportEntityLocker locker = EntityLockerFactory.Companion.createFull();
+    private final GlobalSupportEntityLocker locker = EntityLockerFactory.Companion.createFullyConfigured();
 
     @Actor
     public void actor1(EntityState.SimpleState state, III_Result result) {

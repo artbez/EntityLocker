@@ -2,27 +2,33 @@ package iimetra.example.concurrent.lock.wrapper
 
 import java.util.concurrent.atomic.AtomicStampedReference
 
+/**
+ * Statistic for [LockWrapper].
+ */
 class LockStatistic {
+    // set of threads that wait for lock and Statistic version
     private val requestedThreadsAndVersion = AtomicStampedReference<Set<Thread>>(HashSet(), 0)
 
+    // Thread that owns lock now
     var ownerThread: Thread? = null
         private set
 
-    var lastRequestTime = 0L
+    // Last time a thread owns lock
+    var lastOwningTime = 0L
         private set
 
-    // executes in lock section
+    // Executes in lock section
     fun visit() {
-        val currentThreadId = Thread.currentThread()
-        update { it.minus(currentThreadId) }
-        ownerThread = currentThreadId
-        lastRequestTime = System.currentTimeMillis()
+        val currentThread = Thread.currentThread()
+        update { it.minus(currentThread) }
+        ownerThread = currentThread
+        lastOwningTime = System.currentTimeMillis()
     }
 
-    // executes with in lock section
+    // Executes with in lock section
     fun leave() {
-        requestedThreadsAndVersion.set(requestedThreadsAndVersion.reference, requestedThreadsAndVersion.stamp + 1)
         ownerThread = null
+        update { it }
     }
 
     fun request() {
@@ -39,6 +45,7 @@ class LockStatistic {
         }
     }
 
+    // Update set<thread> to next version with set transform.
     private fun update(listUpdate: (Set<Thread>) -> Set<Thread>) {
         while (true) {
             val requestedList = requestedThreadsAndVersion.reference

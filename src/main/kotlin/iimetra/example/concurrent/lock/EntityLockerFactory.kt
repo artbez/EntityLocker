@@ -12,15 +12,18 @@ import iimetra.example.concurrent.lock.wrapper.LockWrapper
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
+/**
+ * Factory for creating entity locker.
+ * Allows creating locker with standard and custom configurations.
+ * */
 class EntityLockerFactory {
 
     companion object {
 
-        fun createFull(): TimeoutEntityLocker = create {
+        fun createFullyConfigured(): TimeoutEntityLocker = create {
             withDeadlockPrevention()
             withBySizeRemove(1000)
             withByTimeRemove(10, TimeUnit.SECONDS)
-            withDeadlockPrevention()
             repeatPeriod = TimeUnit.SECONDS.toMillis(1)
         }
 
@@ -34,22 +37,29 @@ class EntityLockerFactory {
     }
 }
 
+/**
+ * Used for providing custom entity locker configuration.
+ * */
 class EntityLockBuilder {
     val lockMap = ConcurrentHashMap<Any, LockWrapper>()
 
     var strategyList = mutableListOf<() -> StrategyExecutor>()
         private set
 
+    /** Period in seconds for repeating executor's processing tasks. For more information see [StrategyExecutor]. */
     var repeatPeriod: Long = TimeUnit.MINUTES.toMillis(5)
 
+    /** Add removing elements from [DefaultEntityLocker]'s hashmap by time. */
     fun withByTimeRemove(duration: Long, timeUnit: TimeUnit) {
         strategyList.add { RemoveByTimeExecutor(repeatPeriod, timeUnit.toMillis(duration), lockMap) }
     }
 
+    /** Add removing elements from [DefaultEntityLocker]'s hashmap by its size. */
     fun withBySizeRemove(maxSize: Int) {
         strategyList.add { RemoveBySizeExecutor(repeatPeriod, maxSize, lockMap) }
     }
 
+    /** Add exceptions' throwing in case of deadlock. */
     fun withDeadlockPrevention() {
         strategyList.add { DeadLockStrategyExecutor(repeatPeriod, lockMap) }
     }

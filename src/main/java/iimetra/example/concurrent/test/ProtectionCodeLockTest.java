@@ -13,13 +13,13 @@ import static org.openjdk.jcstress.annotations.Expect.ACCEPTABLE;
 import static org.openjdk.jcstress.annotations.Expect.FORBIDDEN;
 
 @JCStressTest
-@Description("Test concurrent modification protected code of local locks")
+@Description("Test concurrent modification protected code of 2 local locks")
 @Outcome(id = "1, 2", expect = ACCEPTABLE, desc = "consequence increment")
 @Outcome(id = "2, 1", expect = ACCEPTABLE, desc = "consequence increment")
 @Outcome(expect = FORBIDDEN, desc = "data race")
 public class ProtectionCodeLockTest {
 
-    private final EntityLocker locker = EntityLockerFactory.Companion.createFull();
+    private final EntityLocker locker = EntityLockerFactory.Companion.createFullyConfigured();
 
     @Actor
     public void actor1(EntityState.SimpleState state, II_Result result) {

@@ -4,6 +4,11 @@ import kotlinx.coroutines.experimental.delay
 import kotlinx.coroutines.experimental.launch
 import org.apache.logging.log4j.LogManager
 
+/**
+ * Background executor on [DefaultEntityLocker].
+ *
+ * Repeats function [process] with period [repeatPeriod].
+ */
 abstract class StrategyExecutor(@Volatile var repeatPeriod: Long) {
 
     private val logger = LogManager.getLogger(StrategyExecutor::class.java)

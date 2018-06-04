@@ -3,6 +3,11 @@ package iimetra.example.concurrent.lock.strategy
 import iimetra.example.concurrent.lock.wrapper.LockWrapper
 import java.util.concurrent.ConcurrentHashMap
 
+/**
+ * For Removing elements from [DefaultEntityLocker]
+ *
+ * Removes element if its last request time plus [liveTime] is lower than nowtime
+ */
 class RemoveByTimeExecutor(
     repeatPeriod: Long,
     private val liveTime: Long,
@@ -10,15 +15,13 @@ class RemoveByTimeExecutor(
 ) : StrategyExecutor(repeatPeriod) {
 
     override fun process() {
-        // stream for lazy filter
+        // stream for lazy
         lockMap.entries.stream()
             .filter { (_, v) -> v.checkCondition() }
             .forEach { (e, v) -> removeAttempt(e, v) }
     }
 
-    private fun LockWrapper.checkCondition(): Boolean {
-        return lockStatistic.lastRequestTime + liveTime < System.currentTimeMillis()
-    }
+    private fun LockWrapper.checkCondition(): Boolean = lockStatistic.lastOwningTime + liveTime < System.currentTimeMillis()
 
     private fun removeAttempt(entityId: Any, wrapper: LockWrapper) {
         if (wrapper.tryRemove()) {
@@ -27,6 +30,11 @@ class RemoveByTimeExecutor(
     }
 }
 
+/**
+ * For Removing elements from [DefaultEntityLocker]
+ *
+ * Try to remove all elements if [lockMap] size is bigger than [maxSize]
+ */
 class RemoveBySizeExecutor(
     repeatPeriod: Long,
     private val maxSize: Int,
