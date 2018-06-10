@@ -2,77 +2,107 @@ package iimetra.example.concurrent.lock.wrapper
 
 import java.util.*
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicMarkableReference
 import java.util.concurrent.locks.ReentrantLock
 
 /**
  * Wrapper for ReentrantLock.
  *
- * Delegate lock/tryLock/unlock operations to innerLock.
+ * Delegate lock/tryLock/unlock operations to entityIdLock.
  * Provides lock statistic [LockStatistic].
  *
  * Can be marked removed.
  */
 class LockWrapper {
 
-    // For identifying
-    val uid = UUID.randomUUID().toString();
+    // For identifying.
+    val uid = UUID.randomUUID().toString()
     val lockStatistic = LockStatistic()
-
-    private val innerLock = ReentrantLock()
-    // Calculates visitors in order to correct remove
-    private val visitorsAndIsDeleted = AtomicMarkableReference<Long>(0, false)
+    // Lock matching entity id.
+    private val entityIdLock = ReentrantLock()
+    // Inner lock for working inside methods.
+    private var innerLock = ReentrantLock()
+    // Indicate weather this lockwrapper already deleted.
+    private var deleted: Boolean = false
+    private var lockConsumersNumber: Int = 0
 
     fun lock(): Boolean {
-        val lastVisitorsNumber = visitorsAndIsDeleted.reference
-        val successVisit = visitorsAndIsDeleted.compareAndSet(lastVisitorsNumber, lastVisitorsNumber + 1, false, false)
 
-        if (successVisit) {
-            lockStatistic.request()
-            forceLock()
-            lockStatistic.visit()
+        innerLockBlock {
+            if (deleted) {
+                return false
+            }
+            lockConsumersNumber++
         }
 
-        return successVisit
+        lockStatistic.requestLock()
+        forceLock()
+        lockStatistic.receivedLock()
+
+        return true
     }
 
     fun tryLock(): Boolean {
-        val lastVisitorsNumber = visitorsAndIsDeleted.reference
-        val successVisit = visitorsAndIsDeleted.compareAndSet(lastVisitorsNumber, lastVisitorsNumber + 1, false, false)
 
-        if (successVisit) {
-            val locked = innerLock.tryLock()
-            if (locked) {
-                lockStatistic.visit()
+        innerLockBlock {
+            if (deleted) {
+                return false
             }
-            return locked
-        }
 
-        return successVisit
+            lockConsumersNumber++
+
+            val locked = entityIdLock.tryLock()
+            if (locked) {
+                lockStatistic.receivedLock()
+                return true
+            }
+
+            lockConsumersNumber--
+        }
+        return false
     }
 
     fun unlock() {
-        lockStatistic.leave()
-        innerLock.unlock()
+        lockStatistic.releasedLock()
 
-        var successExit = false
-        while (!successExit) {
-            val lastVisitorsNumber = visitorsAndIsDeleted.reference
-            successExit = visitorsAndIsDeleted.compareAndSet(lastVisitorsNumber, lastVisitorsNumber - 1, false, false)
+        entityIdLock.unlock()
+
+        innerLockBlock {
+            lockConsumersNumber--
         }
     }
 
-    // If we cannot remove, element is used by another thread and this means we should not remove it
-    fun tryRemove(): Boolean = visitorsAndIsDeleted.compareAndSet(0, 0, false, true)
+    // If we cannot remove, element is used by another thread and this means we should not remove it.
+    fun tryRemove(): Boolean {
+        innerLockBlock {
+            if (lockConsumersNumber == 0) {
+                deleted = true
+                return true
+            }
+        }
+        return false
+    }
+
+    fun interruptOwningThread() {
+        lockStatistic.ownerThread?.interrupt()
+    }
 
     private fun forceLock() {
-        var locked = innerLock.tryLock()
+        var locked = entityIdLock.tryLock()
         while (!locked) {
             if (Thread.interrupted()) {
                 Thread.currentThread().interrupt()
                 break
             }
-            locked = innerLock.tryLock(1, TimeUnit.SECONDS)
+            locked = entityIdLock.tryLock(1, TimeUnit.SECONDS)
+        }
+    }
+
+    private inline fun innerLockBlock(block: () -> Unit) {
+        innerLock.lock()
+        try {
+            block()
+        } finally {
+            innerLock.unlock()
         }
     }
 }

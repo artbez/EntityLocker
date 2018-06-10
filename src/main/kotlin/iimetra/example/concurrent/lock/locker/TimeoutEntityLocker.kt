@@ -30,14 +30,12 @@ inline fun TimeoutEntityLocker.lock(timeout: Long, timeUnit: TimeUnit, entityId:
 
 class TimeoutEntityLockerDecorator(private val locker: GlobalSupportEntityLocker) : GlobalSupportEntityLocker by (locker), TimeoutEntityLocker {
 
-    override fun lock(timeout: Long, timeUnit: TimeUnit, entityId: Any): Boolean = repeatTimedRequest(timeout, timeUnit) { tryLock(entityId) }
-
-    // Until the time came do lockRequest
-    private inline fun repeatTimedRequest(timeout: Long, timeUnit: TimeUnit, lockRequest: GlobalSupportEntityLocker.() -> Boolean): Boolean {
+    override fun lock(timeout: Long, timeUnit: TimeUnit, entityId: Any): Boolean {
         val finishTime = System.currentTimeMillis() + timeUnit.toMillis(timeout)
+
         var successLock = false
         while (!successLock && System.currentTimeMillis() < finishTime) {
-            successLock = locker.lockRequest()
+            successLock = locker.tryLock(entityId)
         }
         return successLock
     }

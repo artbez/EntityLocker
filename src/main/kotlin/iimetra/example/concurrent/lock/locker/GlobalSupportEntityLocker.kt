@@ -1,6 +1,5 @@
 package iimetra.example.concurrent.lock.locker
 
-import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.Lock
 import java.util.concurrent.locks.ReentrantLock
 
@@ -51,12 +50,12 @@ inline fun GlobalSupportEntityLocker.globalLock(protectedCode: () -> Unit) {
 class GlobalSupportEntityLockerDecorator(private val locker: EntityLocker) : EntityLocker by (locker), GlobalSupportEntityLocker {
 
     private val globalLock: Lock = ReentrantLock()
-    // signals when no threads execute global locking section
+    // Signals when no threads execute global locking section.
     private val glLockNotProcessingCond = globalLock.newCondition()
-    // signals when local unlock called
+    // Signals when local unlock called
     private val unlockLocalCond = globalLock.newCondition()
-    // number of opened but not closed local locks
-    private val localLocksProcessingNumber = AtomicInteger(0)
+    // Number of opened but not closed local locks.
+    private var localLocksProcessingNumber = 0
     private var globalLockProcessing = false
 
     override fun lock() {
@@ -68,8 +67,7 @@ class GlobalSupportEntityLockerDecorator(private val locker: EntityLocker) : Ent
 
             globalLockProcessing = true
 
-
-            while (localLocksProcessingNumber.get() != 0) {
+            while (localLocksProcessingNumber != 0) {
                 unlockLocalCond.await()
             }
         }
@@ -86,9 +84,11 @@ class GlobalSupportEntityLockerDecorator(private val locker: EntityLocker) : Ent
         globalLockBlock {
             if (!globalLockProcessing) {
                 globalLockProcessing = true
-                if (localLocksProcessingNumber.get() == 0) {
+
+                if (localLocksProcessingNumber == 0) {
                     return true
                 }
+
                 globalLockProcessing = false
                 glLockNotProcessingCond.signalAll()
             }
@@ -101,7 +101,8 @@ class GlobalSupportEntityLockerDecorator(private val locker: EntityLocker) : Ent
             while (globalLockProcessing) {
                 glLockNotProcessingCond.await()
             }
-            localLocksProcessingNumber.incrementAndGet()
+
+            localLocksProcessingNumber++
         }
         locker.lock(entityId)
     }
@@ -109,11 +110,13 @@ class GlobalSupportEntityLockerDecorator(private val locker: EntityLocker) : Ent
     override fun tryLock(entityId: Any): Boolean {
         globalLockBlock {
             if (!globalLockProcessing) {
-                localLocksProcessingNumber.incrementAndGet()
+                localLocksProcessingNumber++
+
                 if (locker.tryLock(entityId)) {
                     return true
                 }
-                localLocksProcessingNumber.decrementAndGet()
+
+                localLocksProcessingNumber--
             }
         }
         return false
@@ -122,7 +125,7 @@ class GlobalSupportEntityLockerDecorator(private val locker: EntityLocker) : Ent
     override fun unlock(entityId: Any) {
         globalLockBlock {
             locker.unlock(entityId)
-            localLocksProcessingNumber.decrementAndGet()
+            localLocksProcessingNumber--
             unlockLocalCond.signalAll()
         }
     }

@@ -1,5 +1,6 @@
 package iimetra.example.concurrent.lock.strategy
 
+import iimetra.example.concurrent.lock.wrapper.LockWrapper
 import kotlinx.coroutines.experimental.delay
 import kotlinx.coroutines.experimental.launch
 import org.apache.logging.log4j.LogManager
@@ -9,16 +10,16 @@ import org.apache.logging.log4j.LogManager
  *
  * Repeats function [process] with period [repeatPeriod].
  */
-abstract class StrategyExecutor(@Volatile var repeatPeriod: Long) {
+abstract class BackgroundExecutor(private val repeatPeriod: Long) {
 
-    private val logger = LogManager.getLogger(StrategyExecutor::class.java)
+    private val logger = LogManager.getLogger(BackgroundExecutor::class.java)
 
-    fun start(onExceptionCallback: (Throwable) -> Unit) {
+    fun startWithExceptionCallback(lockMap: MutableMap<Any, LockWrapper>, onExceptionCallback: (Throwable) -> Unit) {
         launch {
             try {
                 while (true) {
                     delay(repeatPeriod)
-                    process()
+                    process(lockMap)
                 }
             } catch (e: Throwable) {
                 logger.error(e)
@@ -28,6 +29,6 @@ abstract class StrategyExecutor(@Volatile var repeatPeriod: Long) {
         }
     }
 
-    protected abstract fun process()
+    protected abstract fun process(lockMap: MutableMap<Any, LockWrapper>)
 }
 

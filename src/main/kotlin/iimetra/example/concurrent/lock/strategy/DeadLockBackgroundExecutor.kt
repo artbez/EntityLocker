@@ -1,22 +1,24 @@
 package iimetra.example.concurrent.lock.strategy
 
 import iimetra.example.concurrent.lock.wrapper.LockWrapper
-import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Dead lock searching [StrategyExecutor].
+ * Dead lock searching [BackgroundExecutor].
  */
-class DeadLockStrategyExecutor(repeatPeriod: Long, private val lockMap: ConcurrentHashMap<Any, LockWrapper>) : StrategyExecutor(repeatPeriod) {
+class DeadLockBackgroundExecutor(repeatPeriod: Long) : BackgroundExecutor(repeatPeriod) {
 
     /**
      * @throws DeadLockException in case deadlock was found.
      */
-    override fun process() {
+    override fun process(lockMap: MutableMap<Any, LockWrapper>) {
 
-        var baseDeadlockSet = getDeadLockWrappers()
+        var baseDeadlockSet = getDeadLockWrappers(lockMap)
+
         if (baseDeadlockSet.isNotEmpty()) {
+
             // We suppose that if same systems state (with versions) occurs two times that state is correct.
-            var actualDeadlockSet = getDeadLockWrappers()
+            var actualDeadlockSet = getDeadLockWrappers(lockMap)
+
             while (actualDeadlockSet.isNotEmpty()) {
 
                 if (equalMaps(baseDeadlockSet, actualDeadlockSet)) {
@@ -24,17 +26,19 @@ class DeadLockStrategyExecutor(repeatPeriod: Long, private val lockMap: Concurre
                 }
 
                 baseDeadlockSet = actualDeadlockSet
-                actualDeadlockSet = getDeadLockWrappers()
+                actualDeadlockSet = getDeadLockWrappers(lockMap)
             }
         }
     }
 
-    private fun getDeadLockWrappers(): Map<String, Int> {
+    // Returns LockWrappers and their versions which are in deadlock.
+    private fun getDeadLockWrappers(lockMap: Map<Any, LockWrapper>): Map<String, Int> {
         val graph = DeadlockGraph()
 
         lockMap.values.forEach {
             graph.addData(it)
         }
+
         return graph.findDeadlockWrappers()
     }
 
@@ -45,11 +49,11 @@ class DeadLockStrategyExecutor(repeatPeriod: Long, private val lockMap: Concurre
 }
 
 class DeadlockGraph {
-    // threadId <-> set<requesting lock>
+    // ThreadId <-> Set<requesting lockId>.
     private val requestMap = mutableMapOf<Long, MutableSet<String>>()
-    // lockId <-> owning thread
+    // LockId <-> Owning thread.
     private val ownershipMap = mutableMapOf<String, Long>()
-    // lock <-> version
+    // LockId <-> Version.
     private val versionMap = mutableMapOf<String, Int>()
 
     fun addData(wrapper: LockWrapper) {
@@ -59,10 +63,10 @@ class DeadlockGraph {
             ownershipMap[wrapper.uid] = ownerThreadId
         }
 
-        val threadsAndVersion = wrapper.lockStatistic.threadsAndVersion()
-        versionMap[wrapper.uid] = threadsAndVersion.second
+        val (waitingThreads, version) = wrapper.lockStatistic.waitingThreadsAndStatVersion()
+        versionMap[wrapper.uid] = version
 
-        threadsAndVersion.first.forEach {
+        waitingThreads.forEach {
             requestMap.computeIfAbsent(it.id) { mutableSetOf() }.add(wrapper.uid)
         }
     }
@@ -86,28 +90,34 @@ class DeadlockGraph {
         return deadLockList.map { it to (versionMap[it] ?: throw IllegalStateException("Each wrapper has a vertex")) }.toMap()
     }
 
-    // traverse until find visited
+    // Traverse until find visited.
     private fun findDeadlock(wrapperId: String, previous: MutableMap<String, String>): List<String> {
 
         val ownerThread = ownershipMap[wrapperId] ?: return emptyList()
         val nextWrapperList = requestMap.getOrDefault(ownerThread, emptyList<String>())
 
+        // If wrapper that already was in path (in previous.values) is in nextWrapperList, there is a cycle.
         nextWrapperList.find { it != wrapperId && previous.values.contains(it) }?.let {
             previous[it] = wrapperId
             return findCycle(it, previous)
         }
 
         nextWrapperList.forEach { previous[it] = wrapperId }
-        return nextWrapperList.map { findDeadlock(it, previous) }.firstOrNull { it.isNotEmpty() } ?: emptyList()
+
+        return nextWrapperList
+            .map { findDeadlock(it, previous) }
+            .firstOrNull { it.isNotEmpty() } ?: emptyList()
     }
 
     private fun findCycle(lastId: String, previous: MutableMap<String, String>): List<String> {
         val result = mutableListOf<String>()
+
         var tmp = lastId
         while (previous[tmp] != lastId) {
             result.add(tmp)
             tmp = previous[tmp] ?: throw IllegalStateException("Cycle must exist")
         }
+
         result.add(tmp)
         return result
     }

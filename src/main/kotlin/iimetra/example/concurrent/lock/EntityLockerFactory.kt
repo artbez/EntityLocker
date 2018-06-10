@@ -1,15 +1,10 @@
 package iimetra.example.concurrent.lock
 
-import iimetra.example.concurrent.lock.locker.DefaultEntityLocker
-import iimetra.example.concurrent.lock.locker.GlobalSupportEntityLockerDecorator
-import iimetra.example.concurrent.lock.locker.TimeoutEntityLocker
-import iimetra.example.concurrent.lock.locker.TimeoutEntityLockerDecorator
-import iimetra.example.concurrent.lock.strategy.DeadLockStrategyExecutor
+import iimetra.example.concurrent.lock.locker.*
+import iimetra.example.concurrent.lock.strategy.BackgroundExecutor
+import iimetra.example.concurrent.lock.strategy.DeadLockBackgroundExecutor
 import iimetra.example.concurrent.lock.strategy.RemoveBySizeExecutor
 import iimetra.example.concurrent.lock.strategy.RemoveByTimeExecutor
-import iimetra.example.concurrent.lock.strategy.StrategyExecutor
-import iimetra.example.concurrent.lock.wrapper.LockWrapper
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 /**
@@ -20,47 +15,47 @@ class EntityLockerFactory {
 
     companion object {
 
-        fun createFullyConfigured(): TimeoutEntityLocker = create {
+        fun createWithDefaultConfiguration(): TimeoutEntityLocker = create(repeatPeriod = TimeUnit.SECONDS.toMillis(1)) {
             withDeadlockPrevention()
             withBySizeRemove(1000)
             withByTimeRemove(10, TimeUnit.SECONDS)
-            repeatPeriod = TimeUnit.SECONDS.toMillis(1)
         }
 
-        fun create(builder: EntityLockBuilder.() -> Unit): TimeoutEntityLocker {
-            val lockBuilder = EntityLockBuilder()
+        fun create(repeatPeriod: Long, builder: EntityLockBuilder.() -> Unit): TimeoutEntityLocker {
+
+            val lockBuilder = EntityLockBuilder(repeatPeriod)
             lockBuilder.builder()
-            val initialLocker = DefaultEntityLocker(lockBuilder.lockMap, lockBuilder.strategyList.map { it() })
-            val globalLocker = GlobalSupportEntityLockerDecorator(initialLocker)
-            return TimeoutEntityLockerDecorator(globalLocker)
+
+            return DefaultEntityLocker(lockBuilder.strategyList)
+                .withGlobalSupport()
+                .withLocalTimeoutSupport()
         }
+
+        private fun EntityLocker.withGlobalSupport() = GlobalSupportEntityLockerDecorator(this)
+        private fun GlobalSupportEntityLocker.withLocalTimeoutSupport() = TimeoutEntityLockerDecorator(this)
     }
 }
 
 /**
  * Used for providing custom entity locker configuration.
+ * [repeatPeriod] is a time duration in millis for repeating executors processing tasks.
  * */
-class EntityLockBuilder {
-    val lockMap = ConcurrentHashMap<Any, LockWrapper>()
+class EntityLockBuilder(private val repeatPeriod: Long) {
 
-    var strategyList = mutableListOf<() -> StrategyExecutor>()
-        private set
+    val strategyList = mutableListOf<BackgroundExecutor>()
 
-    /** Period in seconds for repeating executor's processing tasks. For more information see [StrategyExecutor]. */
-    var repeatPeriod: Long = TimeUnit.MINUTES.toMillis(5)
-
-    /** Add removing elements from [DefaultEntityLocker]'s hashmap by time. */
+    /** Add removing elements from [DefaultEntityLocker]'s lockMap by time. */
     fun withByTimeRemove(duration: Long, timeUnit: TimeUnit) {
-        strategyList.add { RemoveByTimeExecutor(repeatPeriod, timeUnit.toMillis(duration), lockMap) }
+        strategyList.add(RemoveByTimeExecutor(repeatPeriod, timeUnit.toMillis(duration)))
     }
 
-    /** Add removing elements from [DefaultEntityLocker]'s hashmap by its size. */
+    /** Add removing elements from [DefaultEntityLocker]'s lockMap by its size. */
     fun withBySizeRemove(maxSize: Int) {
-        strategyList.add { RemoveBySizeExecutor(repeatPeriod, maxSize, lockMap) }
+        strategyList.add(RemoveBySizeExecutor(repeatPeriod, maxSize))
     }
 
     /** Add exceptions' throwing in case of deadlock. */
     fun withDeadlockPrevention() {
-        strategyList.add { DeadLockStrategyExecutor(repeatPeriod, lockMap) }
+        strategyList.add(DeadLockBackgroundExecutor(repeatPeriod))
     }
 }

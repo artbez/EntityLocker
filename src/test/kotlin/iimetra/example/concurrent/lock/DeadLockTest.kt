@@ -14,11 +14,10 @@ import java.util.concurrent.TimeUnit
 // EntityLocker is thread-based, not coroutine-based. So, for correct testing, we should create a thread per coroutine.
 class DeadLockTest {
 
-    private val locker: EntityLocker = EntityLockerFactory.create {
+    private val locker: EntityLocker = EntityLockerFactory.create(repeatPeriod = TimeUnit.SECONDS.toMillis(1)) {
         withByTimeRemove(1, TimeUnit.SECONDS)
         withBySizeRemove(100)
         withDeadlockPrevention()
-        repeatPeriod = TimeUnit.SECONDS.toMillis(1)
     }
 
     @Test(expected = InterruptedException::class)

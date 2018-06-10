@@ -22,7 +22,7 @@ import static org.openjdk.jcstress.annotations.Expect.FORBIDDEN;
 @Outcome(expect = FORBIDDEN, desc = "data race")
 public class LocalLocalGlobalRaceTest {
 
-    private final GlobalSupportEntityLocker locker = EntityLockerFactory.Companion.createFullyConfigured();
+    private final GlobalSupportEntityLocker locker = EntityLockerFactory.Companion.createWithDefaultConfiguration();
 
     @Actor
     public void actor1(EntityState.SimpleState state, III_Result result) {

@@ -1,6 +1,6 @@
 package iimetra.example.concurrent.lock.locker
 
-import iimetra.example.concurrent.lock.strategy.StrategyExecutor
+import iimetra.example.concurrent.lock.strategy.BackgroundExecutor
 import iimetra.example.concurrent.lock.wrapper.LockWrapper
 import java.util.concurrent.ConcurrentHashMap
 
@@ -46,18 +46,15 @@ inline fun EntityLocker.lock(entityId: Any, protectedCode: () -> Unit) {
 }
 
 
-open class DefaultEntityLocker(
-    // Map entity id to boxed lock.   id <-> ReentrantLock
-    private val lockMap: ConcurrentHashMap<Any, LockWrapper>,
-    // Do some work in background
-    strategyExecutors: List<StrategyExecutor>
-) : EntityLocker {
+open class DefaultEntityLocker(backgroundExecutors: List<BackgroundExecutor>) : EntityLocker {
+
+    private val lockMap = ConcurrentHashMap<Any, LockWrapper>()
 
     init {
-        strategyExecutors.forEach {
-            it.start {
-                // if an exception has occurred interrupt all threads that own locks
-                lockMap.values.forEach { it.lockStatistic.ownerThread?.interrupt() }
+        backgroundExecutors.forEach {
+            it.startWithExceptionCallback(lockMap) {
+                // If an exception has occurred interrupt all threads that own locks.
+                lockMap.values.forEach { it.interruptOwningThread() }
             }
         }
     }
@@ -65,12 +62,15 @@ open class DefaultEntityLocker(
     override fun tryLock(entityId: Any): Boolean = lockMap.computeIfAbsent(entityId) { LockWrapper() }.tryLock()
 
     override fun lock(entityId: Any) {
+
         var successLock = false
+
         while (!successLock) {
             val lockWrapper = lockMap.computeIfAbsent(entityId) { LockWrapper() }
             successLock = lockWrapper.lock()
         }
     }
 
-    override fun unlock(entityId: Any) = lockMap[entityId]?.unlock() ?: throw IllegalStateException("Entity id is not locked")
+    override fun unlock(entityId: Any) = lockMap[entityId]?.unlock()
+            ?: throw IllegalMonitorStateException("Entity with id $entityId is not locked")
 }

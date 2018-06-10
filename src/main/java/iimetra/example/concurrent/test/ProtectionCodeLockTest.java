@@ -19,7 +19,7 @@ import static org.openjdk.jcstress.annotations.Expect.FORBIDDEN;
 @Outcome(expect = FORBIDDEN, desc = "data race")
 public class ProtectionCodeLockTest {
 
-    private final EntityLocker locker = EntityLockerFactory.Companion.createFullyConfigured();
+    private final EntityLocker locker = EntityLockerFactory.Companion.createWithDefaultConfiguration();
 
     @Actor
     public void actor1(EntityState.SimpleState state, II_Result result) {

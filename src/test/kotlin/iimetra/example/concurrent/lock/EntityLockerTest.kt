@@ -14,8 +14,7 @@ class TestEntity(val id: Long, var value: String = "initial")
 
 class EntityLockerTest {
 
-    private var locker: EntityLocker = EntityLockerFactory.create {
-        repeatPeriod = TimeUnit.SECONDS.toMillis(1)
+    private var locker: EntityLocker = EntityLockerFactory.create(TimeUnit.SECONDS.toMillis(1)) {
         withByTimeRemove(1, TimeUnit.SECONDS)
         withBySizeRemove(100)
         withDeadlockPrevention()
@@ -76,8 +75,7 @@ class EntityLockerTest {
 
     @Test
     fun timeRemovingStrategyCheck() {
-        locker = EntityLockerFactory.create {
-            repeatPeriod = TimeUnit.SECONDS.toMillis(1)
+        locker = EntityLockerFactory.create(repeatPeriod = TimeUnit.SECONDS.toMillis(1)) {
             withByTimeRemove(1, TimeUnit.SECONDS)
             withDeadlockPrevention()
         }
@@ -97,8 +95,7 @@ class EntityLockerTest {
 
     @Test
     fun sizeRemovingStrategyCheck() {
-        locker = EntityLockerFactory.create {
-            repeatPeriod = TimeUnit.SECONDS.toMillis(1)
+        locker = EntityLockerFactory.create(repeatPeriod = TimeUnit.SECONDS.toMillis(1)) {
             withBySizeRemove(100)
             withDeadlockPrevention()
         }
