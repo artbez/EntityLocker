@@ -57,13 +57,13 @@ class DeadlockGraph {
     private val versionMap = mutableMapOf<String, Int>()
 
     fun addData(wrapper: LockWrapper) {
-        val ownerThreadId = wrapper.lockStatistic.ownerThread?.id
+        val ownerThreadId = wrapper.lockOwningInfo.ownerThread?.id
 
         if (ownerThreadId != null) {
             ownershipMap[wrapper.uid] = ownerThreadId
         }
 
-        val (waitingThreads, version) = wrapper.lockStatistic.waitingThreadsAndStatVersion()
+        val (waitingThreads, version) = wrapper.lockOwningInfo.waitingThreadsAndInfoVersion()
         versionMap[wrapper.uid] = version
 
         waitingThreads.forEach {

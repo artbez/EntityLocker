@@ -1,11 +1,12 @@
 package iimetra.example.concurrent.lock.wrapper
 
 /**
- * Statistic for [LockWrapper].
+ * Additional info about lock access for [LockWrapper].
  */
-class LockStatistic {
-    // Set of threads that wait for lock.
+class LockOwningInfo {
+    // Set of threads that wait for lock. Need for deadlock resolving
     private val requestedThreads: MutableSet<Thread> = HashSet()
+    // Info version
     private var version: Int = 0
 
     // Thread that owns lock now.
@@ -16,7 +17,7 @@ class LockStatistic {
     var lastOwningTime = 0L
         private set
 
-    // Executes in lock section.
+    // Thread got the lock.
     @Synchronized
     fun receivedLock() {
         val currentThread = Thread.currentThread()
@@ -27,13 +28,14 @@ class LockStatistic {
         lastOwningTime = System.currentTimeMillis()
     }
 
-    // Executes with in lock section.
+    // Thread released the lock.
     @Synchronized
     fun releasedLock() {
         ownerThread = null
         version++
     }
 
+    // Thread waiting the lock.
     @Synchronized
     fun requestLock() {
         version++
@@ -41,5 +43,5 @@ class LockStatistic {
     }
 
     @Synchronized
-    fun waitingThreadsAndStatVersion(): Pair<Set<Thread>, Int> = requestedThreads.toSet() to version
+    fun waitingThreadsAndInfoVersion(): Pair<Set<Thread>, Int> = requestedThreads.toSet() to version
 }

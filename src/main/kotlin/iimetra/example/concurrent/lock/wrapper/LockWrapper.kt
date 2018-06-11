@@ -8,7 +8,7 @@ import java.util.concurrent.locks.ReentrantLock
  * Wrapper for ReentrantLock.
  *
  * Delegate lock/tryLock/unlock operations to entityIdLock.
- * Provides lock statistic [LockStatistic].
+ * Provides info about lock access [LockOwningInfo].
  *
  * Can be marked removed.
  */
@@ -16,7 +16,8 @@ class LockWrapper {
 
     // For identifying.
     val uid = UUID.randomUUID().toString()
-    val lockStatistic = LockStatistic()
+    // Additional information about access for lock. Used for [BackgroundExecutors].
+    val lockOwningInfo = LockOwningInfo()
     // Lock matching entity id.
     private val entityIdLock = ReentrantLock()
     // Inner lock for working inside methods.
@@ -34,9 +35,9 @@ class LockWrapper {
             lockConsumersNumber++
         }
 
-        lockStatistic.requestLock()
+        lockOwningInfo.requestLock()
         forceLock()
-        lockStatistic.receivedLock()
+        lockOwningInfo.receivedLock()
 
         return true
     }
@@ -49,23 +50,19 @@ class LockWrapper {
             }
 
             lockConsumersNumber++
-
             val locked = entityIdLock.tryLock()
             if (locked) {
-                lockStatistic.receivedLock()
+                lockOwningInfo.receivedLock()
                 return true
             }
-
             lockConsumersNumber--
         }
         return false
     }
 
     fun unlock() {
-        lockStatistic.releasedLock()
-
         entityIdLock.unlock()
-
+        lockOwningInfo.releasedLock()
         innerLockBlock {
             lockConsumersNumber--
         }
@@ -83,7 +80,7 @@ class LockWrapper {
     }
 
     fun interruptOwningThread() {
-        lockStatistic.ownerThread?.interrupt()
+        lockOwningInfo.ownerThread?.interrupt()
     }
 
     private fun forceLock() {

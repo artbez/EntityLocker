@@ -18,7 +18,7 @@ class RemoveByTimeExecutor(repeatPeriod: Long, private val elementLivinigTime: L
         }
     }
 
-    private fun LockWrapper.notVisitedLongTime(): Boolean = lockStatistic.lastOwningTime + elementLivinigTime < System.currentTimeMillis()
+    private fun LockWrapper.notVisitedLongTime(): Boolean = lockOwningInfo.lastOwningTime + elementLivinigTime < System.currentTimeMillis()
 }
 
 /**
