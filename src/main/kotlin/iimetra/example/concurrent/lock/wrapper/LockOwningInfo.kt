@@ -12,10 +12,12 @@ class LockOwningInfo {
     // Thread that owns lock now.
     var ownerThread: Thread? = null
         private set
+        @Synchronized get
 
     // Last time a thread owns lock.
     var lastOwningTime = 0L
         private set
+        @Synchronized get
 
     // Thread got the lock.
     @Synchronized
